@@ -1,0 +1,5 @@
+- nvim-listen
+- pnpm dev
+- pnpm types:watch
+- pnpm lint:watch
+- run-prompt work-on-ui-app

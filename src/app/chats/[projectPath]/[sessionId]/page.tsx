@@ -7,6 +7,15 @@ import { ChatsAppSidebar } from '@/components/chats-app-sidebar'
 import { ChatsList } from '@/components/chats-list'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { Badge } from '@/components/ui/badge'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 
 interface SessionPageProps {
   params: Promise<{
@@ -31,15 +40,40 @@ export default async function ChatsSessionPage({ params }: SessionPageProps) {
 
   const sessions = await getChatSessionsForProject(project.cwd)
   const entries = await getChatEntriesForSession(project.cwd, sessionId)
+  const isWorktree = project.cwd.includes('worktree')
+  const projectName = project.cwd.split('/').slice(-2).join('/')
 
   return (
     <>
       <ChatsAppSidebar projects={projects} sessions={sessions} />
       <SidebarInset>
         <header className='flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-2'>
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-4'>
             <SidebarTrigger />
-            <h1 className='text-lg font-semibold'>Chats Viewer</h1>
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href='/chats'>Chats</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink href={`/chats/${projectPath}`}>
+                    {projectName}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage className='flex items-center gap-2'>
+                    <span className='font-mono text-xs'>
+                      {sessionId.slice(0, 8)}...
+                    </span>
+                    <Badge variant='secondary' className='text-xs'>
+                      {isWorktree ? 'Worktree' : 'Project'}
+                    </Badge>
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
           <ThemeToggle />
         </header>

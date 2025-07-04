@@ -32,24 +32,13 @@ export function ChatsList({ entries }: ChatsListProps) {
         const isExpanded = expandedIds.has(entry.id)
         const messageRole = data.message?.role || data.type
 
-        // Extract text content from message
-        let messageContent = ''
-        if (data.message?.content) {
-          if (typeof data.message.content === 'string') {
-            messageContent = data.message.content
-          } else if (Array.isArray(data.message.content)) {
-            // Handle array of content blocks
-            messageContent = data.message.content
-              .filter((block: { type: string }) => block.type === 'text')
-              .map((block: { type: string; text: string }) => block.text)
-              .join('\n')
-          }
-        }
-
-        const truncatedContent =
-          messageContent.length > 300
-            ? messageContent.slice(0, 300) + '...'
-            : messageContent
+        // Format JSON data for display
+        const fullJson = JSON.stringify(data, null, 2)
+        const jsonLines = fullJson.split('\n')
+        const truncatedJson =
+          jsonLines.length > 10
+            ? jsonLines.slice(0, 10).join('\n') + '\n...'
+            : fullJson
 
         return (
           <Card
@@ -57,29 +46,27 @@ export function ChatsList({ entries }: ChatsListProps) {
             className='p-4 cursor-pointer hover:bg-muted/50 transition-colors'
             onClick={() => toggleExpanded(entry.id)}
           >
-            <div className='flex items-start justify-between gap-4 mb-2'>
+            <div className='flex items-start justify-between gap-4 mb-0.5'>
               <div className='flex items-center gap-2'>
                 <Badge
                   variant={messageRole === 'user' ? 'default' : 'secondary'}
                 >
                   {messageRole}
                 </Badge>
-                <span className='text-xs text-muted-foreground'>
-                  {getRelativeTime(entry.created)}
-                </span>
+                {data.parentUuid && (
+                  <Badge variant='outline' className='text-xs'>
+                    Branch
+                  </Badge>
+                )}
               </div>
-              {data.parentUuid && (
-                <Badge variant='outline' className='text-xs'>
-                  Branch
-                </Badge>
-              )}
+              <span className='text-xs text-muted-foreground'>
+                {getRelativeTime(entry.created)}
+              </span>
             </div>
 
-            <div className='prose prose-sm dark:prose-invert max-w-none'>
-              <pre className='whitespace-pre text-sm font-mono overflow-x-auto'>
-                {isExpanded ? JSON.stringify(data, null, 2) : truncatedContent}
-              </pre>
-            </div>
+            <pre className='whitespace-pre text-sm font-mono overflow-x-auto'>
+              {isExpanded ? fullJson : truncatedJson}
+            </pre>
 
             <div className='mt-2 text-xs text-muted-foreground'>
               {isExpanded ? 'Click to collapse' : 'Click to expand'}

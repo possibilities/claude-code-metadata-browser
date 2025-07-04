@@ -7,11 +7,11 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from '@/components/ui/sidebar'
 import {
   DropdownMenu,
@@ -84,10 +84,10 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+      <SidebarSeparator />
       {sessions && sessions.length > 0 && (
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Sessions</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {sessions.map(session => (
@@ -99,9 +99,7 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
                       onClick={() => handleSessionChange(session.sessionId)}
                     >
                       <div className='flex flex-col items-start w-full'>
-                        <span className='text-sm truncate max-w-full'>
-                          {session.sessionId.slice(0, 8)}...
-                        </span>
+                        <span className='text-sm'>{session.sessionId}</span>
                         <span className='text-xs text-muted-foreground'>
                           {getRelativeTime(session.startTime)}
                         </span>

@@ -1,4 +1,4 @@
-import { validateConfig } from '@/lib/config'
+import { validateConfig } from '@/lib/config-node'
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {

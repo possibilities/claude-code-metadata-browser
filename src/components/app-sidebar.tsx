@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
 import {
   Sidebar,
@@ -21,39 +21,38 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { getRelativeTime } from '@/lib/utils'
 import type { Project, Session } from '@/app/actions'
-import { getProjects, getSessionsForProject } from '@/app/actions'
 
 interface AppSidebarProps {
-  selectedProject: string | null
-  selectedSession: string | null
-  onProjectChange: (project: string | null) => void
-  onSessionChange: (session: string | null) => void
+  projects: Project[]
+  sessions?: Session[]
 }
 
-export function AppSidebar({
-  selectedProject,
-  selectedSession,
-  onProjectChange,
-  onSessionChange,
-}: AppSidebarProps) {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [sessions, setSessions] = useState<Session[]>([])
+export function AppSidebar({ projects, sessions }: AppSidebarProps) {
+  const pathname = usePathname()
+  const router = useRouter()
 
-  useEffect(() => {
-    getProjects().then(projectList => {
-      setProjects(projectList)
-    })
-  }, [])
+  // Extract current project from pathname
+  const pathSegments = pathname.split('/').filter(Boolean)
+  const currentProjectPath = pathSegments[0] || null
 
-  useEffect(() => {
-    if (selectedProject) {
-      getSessionsForProject(selectedProject).then(sessionList => {
-        setSessions(sessionList)
-      })
+  // Find the current project based on the path
+  const currentProject = projects.find(p => {
+    const parts = p.cwd.split('/')
+    const projectPath = parts.slice(-2).join('-')
+    return projectPath === currentProjectPath
+  })
+
+  const handleProjectChange = (project: Project) => {
+    const parts = project.cwd.split('/')
+    const projectPath = parts.slice(-2).join('-')
+    router.push(`/${projectPath}`)
+  }
+
+  const handleSessionChange = (sessionId: string) => {
+    if (currentProjectPath) {
+      router.push(`/${currentProjectPath}/${sessionId}`)
     }
-  }, [selectedProject])
-
-  const currentProject = projects.find(p => p.cwd === selectedProject)
+  }
 
   return (
     <Sidebar>
@@ -73,10 +72,7 @@ export function AppSidebar({
                 {projects.map(project => (
                   <DropdownMenuItem
                     key={project.cwd}
-                    onClick={() => {
-                      onProjectChange(project.cwd)
-                      onSessionChange(null)
-                    }}
+                    onClick={() => handleProjectChange(project)}
                   >
                     <span>{project.displayName}</span>
                   </DropdownMenuItem>
@@ -86,32 +82,34 @@ export function AppSidebar({
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Sessions</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {sessions.map(session => (
-                <SidebarMenuItem key={session.sessionId}>
-                  <SidebarMenuButton
-                    isActive={selectedSession === session.sessionId}
-                    onClick={() => onSessionChange(session.sessionId)}
-                  >
-                    <div className='flex flex-col items-start w-full'>
-                      <span className='text-sm truncate max-w-full'>
-                        {session.sessionId.slice(0, 8)}...
-                      </span>
-                      <span className='text-xs text-muted-foreground'>
-                        {getRelativeTime(session.startTime)}
-                      </span>
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+      {sessions && sessions.length > 0 && (
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Sessions</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {sessions.map(session => (
+                  <SidebarMenuItem key={session.sessionId}>
+                    <SidebarMenuButton
+                      isActive={pathSegments[1] === session.sessionId}
+                      onClick={() => handleSessionChange(session.sessionId)}
+                    >
+                      <div className='flex flex-col items-start w-full'>
+                        <span className='text-sm truncate max-w-full'>
+                          {session.sessionId.slice(0, 8)}...
+                        </span>
+                        <span className='text-xs text-muted-foreground'>
+                          {getRelativeTime(session.startTime)}
+                        </span>
+                      </div>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      )}
     </Sidebar>
   )
 }

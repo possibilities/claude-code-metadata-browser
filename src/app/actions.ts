@@ -1,8 +1,43 @@
 'use server'
 
 import Database from 'better-sqlite3'
-import { config, validateConfig } from '@/lib/config'
-import { isInWorktreesPath, resolveProjectPath } from '@/lib/git-utils'
+import { execSync } from 'child_process'
+import { config, validateConfig } from '@/lib/config-node'
+
+function isInWorktreesPath(projectPath: string): boolean {
+  if (!config.worktreesPath) return false
+  return projectPath.startsWith(config.worktreesPath)
+}
+
+function getParentRepositoryPath(worktreePath: string): string | null {
+  try {
+    const gitDir = execSync('git rev-parse --absolute-git-dir', {
+      cwd: worktreePath,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim()
+
+    const worktreePattern = /^(.*)\/\.git\/worktrees\//
+    const match = gitDir.match(worktreePattern)
+
+    if (match) {
+      return match[1]
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
+function resolveProjectPath(projectPath: string): string {
+  if (!isInWorktreesPath(projectPath)) {
+    return projectPath
+  }
+
+  const parentPath = getParentRepositoryPath(projectPath)
+  return parentPath || projectPath
+}
 
 export interface HookEntry {
   id: string

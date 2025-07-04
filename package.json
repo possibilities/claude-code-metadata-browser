@@ -1,7 +1,7 @@
 {
-  "name": "nextjs-template",
+  "name": "hooks-log",
   "version": "0.1.0",
-  "description": "NextJs Template",
+  "description": "Hooks Log UI",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -13,6 +13,10 @@
     "format": "prettier --write \"*.{js,mjs,ts,json,md,mdx,yml,yaml}\" \"src/**/*.{js,mjs,jsx,ts,tsx,json,md,mdx,css,yml,yaml}\""
   },
   "dependencies": {
+    "@radix-ui/react-select": "^2.2.5",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.507.0",

@@ -11,7 +11,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from '@/components/ui/sidebar'
 import {
   DropdownMenu,
@@ -31,13 +30,11 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
-  // Extract current project from pathname
   const pathSegments = pathname.split('/').filter(Boolean)
-  // Skip 'hooks' prefix if present
+
   const projectIndex = pathSegments[0] === 'hooks' ? 1 : 0
   const currentProjectPath = pathSegments[projectIndex] || null
 
-  // Find the current project based on the path
   const currentProject = projects.find(p => {
     const parts = p.cwd.split('/')
     const projectPath = parts.slice(-2).join('-')
@@ -84,7 +81,6 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarSeparator />
       {sessions && sessions.length > 0 && (
         <SidebarContent>
           <SidebarGroup>

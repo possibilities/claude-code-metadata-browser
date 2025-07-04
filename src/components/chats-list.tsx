@@ -32,7 +32,6 @@ export function ChatsList({ entries }: ChatsListProps) {
         const isExpanded = expandedIds.has(entry.id)
         const messageRole = data.message?.role || data.type
 
-        // Format JSON data for display
         const fullJson = JSON.stringify(data, null, 2)
         const jsonLines = fullJson.split('\n')
         const truncatedJson =

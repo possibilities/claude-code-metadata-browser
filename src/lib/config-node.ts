@@ -15,7 +15,6 @@ export const config = {
   worktreesPath: expandTilde(process.env.WORKTREES_PATH),
 }
 
-// Validate all required environment variables at startup
 if (!config.databasePath) {
   throw new Error(
     'HOOKS_DB_PATH environment variable is required. Please set it to the path of your hooks.db file.',

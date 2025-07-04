@@ -11,7 +11,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from '@/components/ui/sidebar'
 import {
   DropdownMenu,
@@ -81,7 +80,6 @@ export function ChatsAppSidebar({ projects, sessions }: ChatsAppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarSeparator />
       {sessions && sessions.length > 0 && (
         <SidebarContent>
           <SidebarGroup>

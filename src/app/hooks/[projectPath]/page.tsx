@@ -13,7 +13,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const { projectPath } = await params
   const projects = await getProjects()
 
-  // Find the project that matches this path
   const project = projects.find(p => {
     const parts = p.cwd.split('/')
     const path = parts.slice(-2).join('-')

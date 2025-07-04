@@ -31,7 +31,20 @@ export function ChatsList({ entries }: ChatsListProps) {
         const data = JSON.parse(entry.data)
         const isExpanded = expandedIds.has(entry.id)
         const messageRole = data.message?.role || data.type
-        const messageContent = data.message?.content || ''
+
+        // Extract text content from message
+        let messageContent = ''
+        if (data.message?.content) {
+          if (typeof data.message.content === 'string') {
+            messageContent = data.message.content
+          } else if (Array.isArray(data.message.content)) {
+            // Handle array of content blocks
+            messageContent = data.message.content
+              .filter((block: { type: string }) => block.type === 'text')
+              .map((block: { type: string; text: string }) => block.text)
+              .join('\n')
+          }
+        }
 
         const truncatedContent =
           messageContent.length > 300
@@ -63,16 +76,14 @@ export function ChatsList({ entries }: ChatsListProps) {
             </div>
 
             <div className='prose prose-sm dark:prose-invert max-w-none'>
-              <pre className='whitespace-pre-wrap text-sm font-mono'>
-                {isExpanded ? messageContent : truncatedContent}
+              <pre className='whitespace-pre text-sm font-mono overflow-x-auto'>
+                {isExpanded ? JSON.stringify(data, null, 2) : truncatedContent}
               </pre>
             </div>
 
-            {messageContent.length > 300 && (
-              <div className='mt-2 text-xs text-muted-foreground'>
-                {isExpanded ? 'Click to collapse' : 'Click to expand'}
-              </div>
-            )}
+            <div className='mt-2 text-xs text-muted-foreground'>
+              {isExpanded ? 'Click to collapse' : 'Click to expand'}
+            </div>
           </Card>
         )
       })}

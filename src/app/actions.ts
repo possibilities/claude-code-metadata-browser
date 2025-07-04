@@ -2,6 +2,7 @@
 
 import Database from 'better-sqlite3'
 import { config, validateConfig } from '@/lib/config'
+import { isInWorktreesPath, resolveProjectPath } from '@/lib/git-utils'
 
 export interface HookEntry {
   id: string
@@ -28,7 +29,10 @@ export async function getHookEntries(): Promise<HookEntry[]> {
   try {
     const stmt = db.prepare('SELECT * FROM entries ORDER BY created DESC')
     const entries = stmt.all() as HookEntry[]
-    return entries
+    return entries.map(entry => ({
+      ...entry,
+      cwd: resolveProjectPath(entry.cwd),
+    }))
   } finally {
     db.close()
   }
@@ -42,11 +46,21 @@ export async function getProjects(): Promise<Project[]> {
     const stmt = db.prepare('SELECT DISTINCT cwd FROM entries ORDER BY cwd')
     const results = stmt.all() as { cwd: string }[]
 
-    return results.map(({ cwd }) => {
-      const parts = cwd.split('/')
-      const displayName = parts.slice(-2).join('/')
-      return { cwd, displayName }
-    })
+    const projectMap = new Map<string, Project>()
+
+    for (const { cwd } of results) {
+      const resolvedPath = resolveProjectPath(cwd)
+
+      if (!isInWorktreesPath(cwd) || resolvedPath === cwd) {
+        const parts = resolvedPath.split('/')
+        const displayName = parts.slice(-2).join('/')
+        projectMap.set(resolvedPath, { cwd: resolvedPath, displayName })
+      }
+    }
+
+    return Array.from(projectMap.values()).sort((a, b) =>
+      a.cwd.localeCompare(b.cwd),
+    )
   } finally {
     db.close()
   }
@@ -59,19 +73,39 @@ export async function getSessionsForProject(
   const db = new Database(config.databasePath!, { readonly: true })
 
   try {
-    const stmt = db.prepare(`
+    const stmt = db.prepare('SELECT DISTINCT cwd FROM entries')
+    const allPaths = stmt.all() as { cwd: string }[]
+
+    const relevantPaths = allPaths
+      .filter(({ cwd }) => resolveProjectPath(cwd) === projectCwd)
+      .map(({ cwd }) => cwd)
+
+    if (relevantPaths.length === 0) return []
+
+    const placeholders = relevantPaths.map(() => '?').join(', ')
+    const sessionStmt = db.prepare(`
       SELECT DISTINCT
         json_extract(data, '$.session_id') as sessionId,
-        cwd as projectCwd,
+        cwd as originalCwd,
         MIN(created) as startTime
       FROM entries
-      WHERE cwd = ?
+      WHERE cwd IN (${placeholders})
         AND json_extract(data, '$.session_id') IS NOT NULL
       GROUP BY sessionId
       ORDER BY startTime DESC
     `)
-    const sessions = stmt.all(projectCwd) as Session[]
-    return sessions
+
+    const sessions = sessionStmt.all(...relevantPaths) as Array<{
+      sessionId: string
+      originalCwd: string
+      startTime: number
+    }>
+
+    return sessions.map(session => ({
+      sessionId: session.sessionId,
+      projectCwd: projectCwd,
+      startTime: session.startTime,
+    }))
   } finally {
     db.close()
   }
@@ -85,14 +119,28 @@ export async function getEntriesForSession(
   const db = new Database(config.databasePath!, { readonly: true })
 
   try {
+    const pathStmt = db.prepare('SELECT DISTINCT cwd FROM entries')
+    const allPaths = pathStmt.all() as { cwd: string }[]
+
+    const relevantPaths = allPaths
+      .filter(({ cwd }) => resolveProjectPath(cwd) === projectCwd)
+      .map(({ cwd }) => cwd)
+
+    if (relevantPaths.length === 0) return []
+
+    const placeholders = relevantPaths.map(() => '?').join(', ')
     const stmt = db.prepare(`
       SELECT * FROM entries
-      WHERE cwd = ?
+      WHERE cwd IN (${placeholders})
         AND json_extract(data, '$.session_id') = ?
       ORDER BY created DESC
     `)
-    const entries = stmt.all(projectCwd, sessionId) as HookEntry[]
-    return entries
+
+    const entries = stmt.all(...relevantPaths, sessionId) as HookEntry[]
+    return entries.map(entry => ({
+      ...entry,
+      cwd: resolveProjectPath(entry.cwd),
+    }))
   } finally {
     db.close()
   }

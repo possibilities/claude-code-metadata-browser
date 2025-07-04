@@ -1,6 +1,7 @@
 'use server'
 
 import Database from 'better-sqlite3'
+import { config, validateConfig } from '@/lib/config'
 
 export interface HookEntry {
   id: string
@@ -21,7 +22,8 @@ export interface Session {
 }
 
 export async function getHookEntries(): Promise<HookEntry[]> {
-  const db = new Database('/home/mike/.claude/hooks.db', { readonly: true })
+  validateConfig()
+  const db = new Database(config.databasePath!, { readonly: true })
 
   try {
     const stmt = db.prepare('SELECT * FROM entries ORDER BY created DESC')
@@ -33,7 +35,8 @@ export async function getHookEntries(): Promise<HookEntry[]> {
 }
 
 export async function getProjects(): Promise<Project[]> {
-  const db = new Database('/home/mike/.claude/hooks.db', { readonly: true })
+  validateConfig()
+  const db = new Database(config.databasePath!, { readonly: true })
 
   try {
     const stmt = db.prepare('SELECT DISTINCT cwd FROM entries ORDER BY cwd')
@@ -52,16 +55,17 @@ export async function getProjects(): Promise<Project[]> {
 export async function getSessionsForProject(
   projectCwd: string,
 ): Promise<Session[]> {
-  const db = new Database('/home/mike/.claude/hooks.db', { readonly: true })
+  validateConfig()
+  const db = new Database(config.databasePath!, { readonly: true })
 
   try {
     const stmt = db.prepare(`
-      SELECT DISTINCT 
+      SELECT DISTINCT
         json_extract(data, '$.session_id') as sessionId,
         cwd as projectCwd,
         MIN(created) as startTime
-      FROM entries 
-      WHERE cwd = ? 
+      FROM entries
+      WHERE cwd = ?
         AND json_extract(data, '$.session_id') IS NOT NULL
       GROUP BY sessionId
       ORDER BY startTime DESC
@@ -77,12 +81,13 @@ export async function getEntriesForSession(
   projectCwd: string,
   sessionId: string,
 ): Promise<HookEntry[]> {
-  const db = new Database('/home/mike/.claude/hooks.db', { readonly: true })
+  validateConfig()
+  const db = new Database(config.databasePath!, { readonly: true })
 
   try {
     const stmt = db.prepare(`
-      SELECT * FROM entries 
-      WHERE cwd = ? 
+      SELECT * FROM entries
+      WHERE cwd = ?
         AND json_extract(data, '$.session_id') = ?
       ORDER BY created DESC
     `)

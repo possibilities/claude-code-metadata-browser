@@ -42,11 +42,8 @@ export function AppSidebar({
   useEffect(() => {
     getProjects().then(projectList => {
       setProjects(projectList)
-      if (!selectedProject && projectList.length > 0) {
-        onProjectChange(projectList[0].cwd)
-      }
     })
-  }, [selectedProject, onProjectChange])
+  }, [])
 
   useEffect(() => {
     if (selectedProject) {
@@ -94,14 +91,6 @@ export function AppSidebar({
           <SidebarGroupLabel>Sessions</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={!selectedSession}
-                  onClick={() => onSessionChange(null)}
-                >
-                  <span>All Sessions</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               {sessions.map(session => (
                 <SidebarMenuItem key={session.sessionId}>
                   <SidebarMenuButton

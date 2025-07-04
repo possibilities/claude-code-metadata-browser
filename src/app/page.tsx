@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getHookEntries, getEntriesForSession, type HookEntry } from './actions'
+import { getEntriesForSession, type HookEntry } from './actions'
 import { HooksList } from '@/components/hooks-list'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { AppSidebar } from '@/components/app-sidebar'
@@ -17,16 +17,15 @@ export default function Home() {
     const loadEntries = async () => {
       setLoading(true)
       try {
-        let data: HookEntry[]
         if (selectedProject && selectedSession) {
-          data = await getEntriesForSession(selectedProject, selectedSession)
-        } else if (selectedProject) {
-          const allEntries = await getHookEntries()
-          data = allEntries.filter(entry => entry.cwd === selectedProject)
+          const data = await getEntriesForSession(
+            selectedProject,
+            selectedSession,
+          )
+          setEntries(data)
         } else {
-          data = await getHookEntries()
+          setEntries([])
         }
-        setEntries(data)
       } finally {
         setLoading(false)
       }
@@ -57,9 +56,23 @@ export default function Home() {
               <div className='text-center py-8 text-muted-foreground'>
                 Loading...
               </div>
+            ) : !selectedProject ? (
+              <div className='text-center py-8 text-muted-foreground'>
+                <p className='text-lg mb-2'>Select a project to get started</p>
+                <p className='text-sm'>
+                  Choose a project from the sidebar to view its hook logs
+                </p>
+              </div>
+            ) : !selectedSession ? (
+              <div className='text-center py-8 text-muted-foreground'>
+                <p className='text-lg mb-2'>Select a session</p>
+                <p className='text-sm'>
+                  Choose a session from the sidebar to view its entries
+                </p>
+              </div>
             ) : entries.length === 0 ? (
               <div className='text-center py-8 text-muted-foreground'>
-                No entries found
+                No entries found for this session
               </div>
             ) : (
               <HooksList entries={entries} />

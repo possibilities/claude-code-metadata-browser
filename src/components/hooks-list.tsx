@@ -23,7 +23,7 @@ export function HooksList({ entries }: HooksListProps) {
         const hookEventName = parsedData?.hook_event_name || 'unknown'
 
         return (
-          <Card key={entry.id} className='p-4'>
+          <Card key={entry.id} className='p-4 gap-4'>
             <div className='flex items-center justify-between mb-0.5'>
               <Badge variant='secondary'>{hookEventName}</Badge>
               <span className='text-xs text-muted-foreground'>

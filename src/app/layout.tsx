@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
 import { ThemeProvider } from '@/lib/theme-provider'
+import { SidebarProvider } from '@/components/ui/sidebar'
 import './globals.css'
 import './debug.css'
 
@@ -8,11 +10,14 @@ export const metadata: Metadata = {
   description: 'Claude Hooks Log Viewer',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const cookieStore = await cookies()
+  const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true'
+
   return (
     <html lang='en' suppressHydrationWarning>
       <head>
@@ -30,7 +35,11 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <SidebarProvider defaultOpen={defaultOpen}>
+            {children}
+          </SidebarProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

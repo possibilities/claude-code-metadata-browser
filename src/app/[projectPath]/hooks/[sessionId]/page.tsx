@@ -2,7 +2,7 @@ import {
   getProjects,
   getSessionsForProject,
   getEntriesForSession,
-} from '../../actions'
+} from '../../../actions'
 import { AppSidebar } from '@/components/app-sidebar'
 import { HooksList } from '@/components/hooks-list'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'

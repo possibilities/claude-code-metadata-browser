@@ -50,7 +50,7 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
 
   const handleSessionChange = (sessionId: string) => {
     if (currentProjectPath) {
-      router.push(`/${currentProjectPath}/${sessionId}`)
+      router.push(`/${currentProjectPath}/hooks/${sessionId}`)
     }
   }
 
@@ -91,7 +91,7 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
                 {sessions.map(session => (
                   <SidebarMenuItem key={session.sessionId}>
                     <SidebarMenuButton
-                      isActive={pathSegments[1] === session.sessionId}
+                      isActive={pathSegments[2] === session.sessionId}
                       onClick={() => handleSessionChange(session.sessionId)}
                     >
                       <div className='flex flex-col items-start w-full'>

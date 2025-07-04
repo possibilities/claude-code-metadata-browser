@@ -33,7 +33,9 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
 
   // Extract current project from pathname
   const pathSegments = pathname.split('/').filter(Boolean)
-  const currentProjectPath = pathSegments[0] || null
+  // Skip 'hooks' prefix if present
+  const projectIndex = pathSegments[0] === 'hooks' ? 1 : 0
+  const currentProjectPath = pathSegments[projectIndex] || null
 
   // Find the current project based on the path
   const currentProject = projects.find(p => {
@@ -45,12 +47,12 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
   const handleProjectChange = (project: Project) => {
     const parts = project.cwd.split('/')
     const projectPath = parts.slice(-2).join('-')
-    router.push(`/${projectPath}`)
+    router.push(`/hooks/${projectPath}`)
   }
 
   const handleSessionChange = (sessionId: string) => {
     if (currentProjectPath) {
-      router.push(`/${currentProjectPath}/hooks/${sessionId}`)
+      router.push(`/hooks/${currentProjectPath}/${sessionId}`)
     }
   }
 
@@ -91,7 +93,9 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
                 {sessions.map(session => (
                   <SidebarMenuItem key={session.sessionId}>
                     <SidebarMenuButton
-                      isActive={pathSegments[2] === session.sessionId}
+                      isActive={
+                        pathSegments[projectIndex + 1] === session.sessionId
+                      }
                       onClick={() => handleSessionChange(session.sessionId)}
                     >
                       <div className='flex flex-col items-start w-full'>

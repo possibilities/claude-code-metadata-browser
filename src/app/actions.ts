@@ -2,7 +2,7 @@
 
 import Database from 'better-sqlite3'
 import { execSync } from 'child_process'
-import { config, validateConfig } from '@/lib/config-node'
+import { config, validateConfig, validateChatConfig } from '@/lib/config-node'
 
 function isInWorktreesPath(projectPath: string): boolean {
   if (!config.worktreesPath) return false
@@ -172,6 +172,132 @@ export async function getEntriesForSession(
     `)
 
     const entries = stmt.all(...relevantPaths, sessionId) as HookEntry[]
+    return entries.map(entry => ({
+      ...entry,
+      cwd: resolveProjectPath(entry.cwd),
+    }))
+  } finally {
+    db.close()
+  }
+}
+
+export interface ChatEntry {
+  id: string
+  data: string
+  cwd: string
+  filepath: string
+  created: number
+}
+
+export interface ChatSession {
+  sessionId: string
+  projectCwd: string
+  startTime: number
+  filepath: string
+}
+
+export async function getChatProjects(): Promise<Project[]> {
+  validateChatConfig()
+  const db = new Database(config.chatDatabasePath!, { readonly: true })
+
+  try {
+    const stmt = db.prepare('SELECT DISTINCT cwd FROM entries ORDER BY cwd')
+    const results = stmt.all() as { cwd: string }[]
+
+    const projectMap = new Map<string, Project>()
+
+    for (const { cwd } of results) {
+      const resolvedPath = resolveProjectPath(cwd)
+
+      if (!isInWorktreesPath(cwd) || resolvedPath === cwd) {
+        const parts = resolvedPath.split('/')
+        const displayName = parts.slice(-2).join('/')
+        projectMap.set(resolvedPath, { cwd: resolvedPath, displayName })
+      }
+    }
+
+    return Array.from(projectMap.values()).sort((a, b) =>
+      a.cwd.localeCompare(b.cwd),
+    )
+  } finally {
+    db.close()
+  }
+}
+
+export async function getChatSessionsForProject(
+  projectCwd: string,
+): Promise<ChatSession[]> {
+  validateChatConfig()
+  const db = new Database(config.chatDatabasePath!, { readonly: true })
+
+  try {
+    const stmt = db.prepare('SELECT DISTINCT cwd FROM entries')
+    const allPaths = stmt.all() as { cwd: string }[]
+
+    const relevantPaths = allPaths
+      .filter(({ cwd }) => resolveProjectPath(cwd) === projectCwd)
+      .map(({ cwd }) => cwd)
+
+    if (relevantPaths.length === 0) return []
+
+    const placeholders = relevantPaths.map(() => '?').join(', ')
+    const sessionStmt = db.prepare(`
+      SELECT DISTINCT
+        json_extract(data, '$.sessionId') as sessionId,
+        filepath,
+        cwd as originalCwd,
+        MIN(created) as startTime
+      FROM entries
+      WHERE cwd IN (${placeholders})
+        AND json_extract(data, '$.sessionId') IS NOT NULL
+      GROUP BY sessionId, filepath
+      ORDER BY startTime DESC
+    `)
+
+    const sessions = sessionStmt.all(...relevantPaths) as Array<{
+      sessionId: string
+      filepath: string
+      originalCwd: string
+      startTime: number
+    }>
+
+    return sessions.map(session => ({
+      sessionId: session.sessionId,
+      projectCwd: projectCwd,
+      startTime: session.startTime,
+      filepath: session.filepath,
+    }))
+  } finally {
+    db.close()
+  }
+}
+
+export async function getChatEntriesForSession(
+  projectCwd: string,
+  sessionId: string,
+): Promise<ChatEntry[]> {
+  validateChatConfig()
+  const db = new Database(config.chatDatabasePath!, { readonly: true })
+
+  try {
+    const pathStmt = db.prepare('SELECT DISTINCT cwd FROM entries')
+    const allPaths = pathStmt.all() as { cwd: string }[]
+
+    const relevantPaths = allPaths
+      .filter(({ cwd }) => resolveProjectPath(cwd) === projectCwd)
+      .map(({ cwd }) => cwd)
+
+    if (relevantPaths.length === 0) return []
+
+    const placeholders = relevantPaths.map(() => '?').join(', ')
+    const stmt = db.prepare(`
+      SELECT * FROM entries
+      WHERE cwd IN (${placeholders})
+        AND json_extract(data, '$.sessionId') = ?
+      ORDER BY created ASC
+    `)
+
+    const entries = stmt.all(...relevantPaths, sessionId) as ChatEntry[]
     return entries.map(entry => ({
       ...entry,
       cwd: resolveProjectPath(entry.cwd),

@@ -14,6 +14,8 @@ import type {
   ChatSession,
 } from '@/lib/types'
 
+const projectPathCache = new Map<string, string>()
+
 function isInWorktreesPath(projectPath: string): boolean {
   if (!config.worktreesPath) return false
   return projectPath.startsWith(config.worktreesPath)
@@ -41,12 +43,21 @@ function getParentRepositoryPath(worktreePath: string): string | null {
 }
 
 function resolveProjectPath(projectPath: string): string {
-  if (!isInWorktreesPath(projectPath)) {
-    return projectPath
+  const cached = projectPathCache.get(projectPath)
+  if (cached !== undefined) {
+    return cached
   }
 
-  const parentPath = getParentRepositoryPath(projectPath)
-  return parentPath || projectPath
+  let resolved: string
+  if (!isInWorktreesPath(projectPath)) {
+    resolved = projectPath
+  } else {
+    const parentPath = getParentRepositoryPath(projectPath)
+    resolved = parentPath || projectPath
+  }
+
+  projectPathCache.set(projectPath, resolved)
+  return resolved
 }
 
 export async function getHookEntries(): Promise<HookEntry[]> {
@@ -78,26 +89,42 @@ async function getProjectsGeneric(databasePath: string): Promise<Project[]> {
 
       try {
         perfLogger.start(`${actionName}.query`)
-        const stmt = db.prepare('SELECT DISTINCT cwd FROM entries ORDER BY cwd')
-        const results = stmt.all() as { cwd: string }[]
+        const stmt = db.prepare(`
+          SELECT cwd, MAX(created) as lastActivity 
+          FROM entries 
+          GROUP BY cwd 
+          ORDER BY lastActivity DESC
+        `)
+        const results = stmt.all() as { cwd: string; lastActivity: number }[]
         perfLogger.end(`${actionName}.query`, { cwdCount: results.length })
 
         perfLogger.start(`${actionName}.transform`)
-        const projectMap = new Map<string, Project>()
+        const projectMap = new Map<
+          string,
+          { project: Project; lastActivity: number }
+        >()
 
-        for (const { cwd } of results) {
+        for (const { cwd, lastActivity } of results) {
           const resolvedPath = resolveProjectPath(cwd)
 
           if (!isInWorktreesPath(cwd) || resolvedPath === cwd) {
             const parts = resolvedPath.split('/')
             const displayName = parts.slice(-2).join('/')
-            projectMap.set(resolvedPath, { cwd: resolvedPath, displayName })
+            const existing = projectMap.get(resolvedPath)
+
+            if (!existing || lastActivity > existing.lastActivity) {
+              projectMap.set(resolvedPath, {
+                project: { cwd: resolvedPath, displayName },
+                lastActivity,
+              })
+            }
           }
         }
 
-        const result = Array.from(projectMap.values()).sort((a, b) =>
-          a.cwd.localeCompare(b.cwd),
-        )
+        const result = Array.from(projectMap.values())
+          .sort((a, b) => b.lastActivity - a.lastActivity)
+          .map(item => item.project)
+
         perfLogger.end(`${actionName}.transform`, {
           projectCount: result.length,
         })

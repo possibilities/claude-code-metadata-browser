@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { SidebarProvider } from '@/components/ui/sidebar'
 
-export default async function HooksLayout({
+export default async function SidebarLayout({
   children,
 }: {
   children: React.ReactNode

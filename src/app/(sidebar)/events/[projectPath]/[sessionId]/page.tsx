@@ -5,7 +5,7 @@ import {
   getProjectInfo,
 } from '../../../../actions'
 import { AppSidebar } from '@/components/app-sidebar'
-import { HooksList } from '@/components/hooks-list'
+import { EventsList } from '@/components/events-list'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SessionHeader } from '@/components/session-header'
@@ -55,11 +55,11 @@ export default async function SessionPage({ params }: SessionPageProps) {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href='/hooks'>Hooks</BreadcrumbLink>
+                  <BreadcrumbLink href='/events'>Events</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href={`/hooks/${projectPath}`}>
+                  <BreadcrumbLink href={`/events/${projectPath}`}>
                     {projectName}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
@@ -84,7 +84,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
               sessionId={sessionId}
               projectInfo={projectInfo}
               entryCount={entries.length}
-              sessionType='hooks'
+              sessionType='events'
               isWorktree={isWorktree}
             />
             {entries.length === 0 ? (
@@ -92,7 +92,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
                 No entries found for this session
               </div>
             ) : (
-              <HooksList entries={entries} />
+              <EventsList entries={entries} />
             )}
           </div>
         </main>

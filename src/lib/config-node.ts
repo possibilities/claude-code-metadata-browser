@@ -22,14 +22,14 @@ function expandTilde(filepath: string | undefined): string | undefined {
 }
 
 export const config = {
-  databasePath: expandTilde(process.env.HOOKS_DB_PATH),
+  databasePath: expandTilde(process.env.EVENTS_DB_PATH),
   chatDatabasePath: expandTilde(process.env.CHATS_DB_PATH),
   worktreesPath: expandTilde(process.env.WORKTREES_PATH || '~/worktrees'),
 }
 
 if (!config.databasePath) {
   throw new Error(
-    'HOOKS_DB_PATH environment variable is required. Please set it to the path of your hooks.db file.',
+    'EVENTS_DB_PATH environment variable is required. Please set it to the path of your events.db file.',
   )
 }
 if (!config.chatDatabasePath) {
@@ -40,7 +40,7 @@ if (!config.chatDatabasePath) {
 
 export function validateEnvironment() {
   const pathsUsingTilde = [
-    process.env.HOOKS_DB_PATH,
+    process.env.EVENTS_DB_PATH,
     process.env.CHATS_DB_PATH,
     process.env.WORKTREES_PATH,
   ].some(path => path === '~' || path?.startsWith('~/'))
@@ -56,7 +56,7 @@ export function validateConfig() {
   validateEnvironment()
   if (!config.databasePath) {
     throw new Error(
-      'HOOKS_DB_PATH environment variable is required. Please set it to the path of your hooks.db file.',
+      'EVENTS_DB_PATH environment variable is required. Please set it to the path of your events.db file.',
     )
   }
 }

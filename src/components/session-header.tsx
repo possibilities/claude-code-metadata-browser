@@ -16,7 +16,7 @@ interface SessionHeaderProps {
   sessionId: string
   projectInfo: ProjectInfo
   entryCount: number
-  sessionType: 'chats' | 'hooks'
+  sessionType: 'chats' | 'events'
   isWorktree: boolean
 }
 
@@ -32,8 +32,8 @@ export function SessionHeader({
   const displayName = projectInfo.name || projectName
   const ProjectIcon = isWorktree ? GitBranch : FolderGit2
   const SessionIcon = sessionType === 'chats' ? MessageSquare : Webhook
-  const otherType = sessionType === 'chats' ? 'hooks' : 'chats'
-  const otherTypeSingular = sessionType === 'chats' ? 'hook' : 'chat'
+  const otherType = sessionType === 'chats' ? 'events' : 'chats'
+  const otherTypeSingular = sessionType === 'chats' ? 'event' : 'chat'
 
   return (
     <Card className='p-4 mb-4'>

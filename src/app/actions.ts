@@ -7,7 +7,7 @@ import { join } from 'path'
 import { config, validateConfig, validateChatConfig } from '@/lib/config-node'
 import { perfLogger } from '@/lib/perf-logger'
 import type {
-  HookEntry,
+  EventEntry,
   Project,
   Session,
   ChatEntry,
@@ -60,13 +60,13 @@ function resolveProjectPath(projectPath: string): string {
   return resolved
 }
 
-export async function getHookEntries(): Promise<HookEntry[]> {
+export async function getEventEntries(): Promise<EventEntry[]> {
   validateConfig()
   const db = new Database(config.databasePath!, { readonly: true })
 
   try {
     const stmt = db.prepare('SELECT * FROM entries ORDER BY created DESC')
-    const entries = stmt.all() as HookEntry[]
+    const entries = stmt.all() as EventEntry[]
     return entries.map(entry => ({
       ...entry,
       cwd: resolveProjectPath(entry.cwd),
@@ -77,7 +77,7 @@ export async function getHookEntries(): Promise<HookEntry[]> {
 }
 
 async function getProjectsGeneric(databasePath: string): Promise<Project[]> {
-  const dbType = databasePath.includes('chats') ? 'chats' : 'hooks'
+  const dbType = databasePath.includes('chats') ? 'chats' : 'events'
   const actionName = `getProjectsGeneric.${dbType}`
 
   return perfLogger.measure(
@@ -157,7 +157,7 @@ async function getSessionsGeneric<T extends Session | ChatSession>(
   projectCwd: string,
   config: SessionQueryConfig,
 ): Promise<T[]> {
-  const dbType = config.databasePath.includes('chats') ? 'chats' : 'hooks'
+  const dbType = config.databasePath.includes('chats') ? 'chats' : 'events'
   const actionName = `getSessionsGeneric.${dbType}`
 
   return perfLogger.measure(
@@ -275,12 +275,12 @@ interface EntryQueryConfig {
   orderBy: 'ASC' | 'DESC'
 }
 
-async function getEntriesGeneric<T extends HookEntry | ChatEntry>(
+async function getEntriesGeneric<T extends EventEntry | ChatEntry>(
   projectCwd: string,
   sessionId: string,
   config: EntryQueryConfig,
 ): Promise<T[]> {
-  const dbType = config.databasePath.includes('chats') ? 'chats' : 'hooks'
+  const dbType = config.databasePath.includes('chats') ? 'chats' : 'events'
   const actionName = `getEntriesGeneric.${dbType}`
 
   return perfLogger.measure(
@@ -350,12 +350,12 @@ async function getEntriesGeneric<T extends HookEntry | ChatEntry>(
 export async function getEntriesForSession(
   projectCwd: string,
   sessionId: string,
-): Promise<HookEntry[]> {
+): Promise<EventEntry[]> {
   validateConfig()
   return perfLogger.measure(
     'getEntriesForSession',
     async () => {
-      return getEntriesGeneric<HookEntry>(projectCwd, sessionId, {
+      return getEntriesGeneric<EventEntry>(projectCwd, sessionId, {
         databasePath: config.databasePath!,
         sessionIdField: '$.session_id',
         orderBy: 'DESC',

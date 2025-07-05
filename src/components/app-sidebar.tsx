@@ -32,7 +32,8 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
 
   const pathSegments = pathname.split('/').filter(Boolean)
 
-  const projectIndex = pathSegments[0] === 'hooks' ? 1 : 0
+  const projectIndex =
+    pathSegments[0] === 'events' || pathSegments[0] === 'chats' ? 1 : 0
   const currentProjectPath = pathSegments[projectIndex] || null
 
   const currentProject = projects.find(p => {
@@ -44,12 +45,14 @@ export function AppSidebar({ projects, sessions }: AppSidebarProps) {
   const handleProjectChange = (project: Project) => {
     const parts = project.cwd.split('/')
     const projectPath = parts.slice(-2).join('-')
-    router.push(`/hooks/${projectPath}`)
+    const currentSection = pathSegments[0] || 'events'
+    router.push(`/${currentSection}/${projectPath}`)
   }
 
   const handleSessionChange = (sessionId: string) => {
     if (currentProjectPath) {
-      router.push(`/hooks/${currentProjectPath}/${sessionId}`)
+      const currentSection = pathSegments[0] || 'events'
+      router.push(`/${currentSection}/${currentProjectPath}/${sessionId}`)
     }
   }
 

@@ -1,4 +1,4 @@
-export interface HookEntry {
+export interface EventEntry {
   id: string
   data: string
   cwd: string

@@ -9,6 +9,8 @@ See [Claude Code Generic Hooks](https://github.com/possibilities/claude-code-gen
 ```
 HOOKS_DB_PATH=~/.hooks.db \
 CHATS_DB_PATH=~/.chats.db \
-WORKTREES_PATH=~/code/worktrees \
+WORKTREES_PATH=~/worktrees \
     pnpm run dev
 ```
+
+Note: `WORKTREES_PATH` defaults to `~/worktrees` if not specified.

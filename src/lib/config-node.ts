@@ -1,5 +1,3 @@
-import { resolve } from 'path'
-
 function expandTilde(filepath: string | undefined): string | undefined {
   if (!filepath) return filepath
   if (filepath === '~') {
@@ -18,7 +16,7 @@ function expandTilde(filepath: string | undefined): string | undefined {
         'HOME environment variable is required when using tilde (~) in paths.',
       )
     }
-    return resolve(home, filepath.slice(2))
+    return home + '/' + filepath.slice(2)
   }
   return filepath
 }

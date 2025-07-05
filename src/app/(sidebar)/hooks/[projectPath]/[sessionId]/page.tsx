@@ -48,7 +48,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
   return (
     <>
       <AppSidebar projects={projects} sessions={sessions} />
-      <SidebarInset>
+      <SidebarInset className='flex-1 min-w-0'>
         <header className='flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-2'>
           <div className='flex items-center gap-4'>
             <SidebarTrigger />
@@ -77,7 +77,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
           <ThemeToggle />
         </header>
         <main className='p-4'>
-          <div className='max-w-[1400px] mx-auto'>
+          <div>
             <SessionHeader
               projectName={projectName}
               projectPath={projectPath}

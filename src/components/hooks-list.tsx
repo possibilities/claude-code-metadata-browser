@@ -1,7 +1,7 @@
 'use client'
 
 import { getRelativeTime } from '@/lib/utils'
-import type { HookEntry } from '@/app/actions'
+import type { HookEntry } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 

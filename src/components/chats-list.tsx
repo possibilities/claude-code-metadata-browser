@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getRelativeTime } from '@/lib/utils'
-import type { ChatEntry } from '@/app/actions'
+import type { ChatEntry } from '@/lib/types'
 
 interface ChatsListProps {
   entries: ChatEntry[]

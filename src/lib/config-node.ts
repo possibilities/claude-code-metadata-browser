@@ -1,10 +1,28 @@
-import { homedir } from 'os'
+'use server'
+
+export const runtime = 'nodejs'
+
 import { resolve } from 'path'
 
 function expandTilde(filepath: string | undefined): string | undefined {
   if (!filepath) return filepath
+  if (filepath === '~') {
+    const home = process.env.HOME
+    if (!home) {
+      throw new Error(
+        'HOME environment variable is required when using tilde (~) in paths.',
+      )
+    }
+    return home
+  }
   if (filepath.startsWith('~/')) {
-    return resolve(homedir(), filepath.slice(2))
+    const home = process.env.HOME
+    if (!home) {
+      throw new Error(
+        'HOME environment variable is required when using tilde (~) in paths.',
+      )
+    }
+    return resolve(home, filepath.slice(2))
   }
   return filepath
 }
@@ -31,7 +49,22 @@ if (!config.worktreesPath) {
   )
 }
 
+export function validateEnvironment() {
+  const pathsUsingTilde = [
+    process.env.HOOKS_DB_PATH,
+    process.env.CHATS_DB_PATH,
+    process.env.WORKTREES_PATH,
+  ].some(path => path === '~' || path?.startsWith('~/'))
+
+  if (pathsUsingTilde && !process.env.HOME) {
+    throw new Error(
+      'HOME environment variable is required when using tilde (~) in paths.',
+    )
+  }
+}
+
 export function validateConfig() {
+  validateEnvironment()
   if (!config.databasePath) {
     throw new Error(
       'HOOKS_DB_PATH environment variable is required. Please set it to the path of your hooks.db file.',
@@ -45,6 +78,7 @@ export function validateConfig() {
 }
 
 export function validateChatConfig() {
+  validateEnvironment()
   if (!config.chatDatabasePath) {
     throw new Error(
       'CHATS_DB_PATH environment variable is required. Please set it to the path of your chats.db file.',

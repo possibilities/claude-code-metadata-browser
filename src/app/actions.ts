@@ -1,8 +1,17 @@
 'use server'
 
+export const runtime = 'nodejs'
+
 import Database from 'better-sqlite3'
 import { execSync } from 'child_process'
 import { config, validateConfig, validateChatConfig } from '@/lib/config-node'
+import type {
+  HookEntry,
+  Project,
+  Session,
+  ChatEntry,
+  ChatSession,
+} from '@/lib/types'
 
 function isInWorktreesPath(projectPath: string): boolean {
   if (!config.worktreesPath) return false
@@ -37,24 +46,6 @@ function resolveProjectPath(projectPath: string): string {
 
   const parentPath = getParentRepositoryPath(projectPath)
   return parentPath || projectPath
-}
-
-export interface HookEntry {
-  id: string
-  data: string
-  cwd: string
-  created: number
-}
-
-export interface Project {
-  cwd: string
-  displayName: string
-}
-
-export interface Session {
-  sessionId: string
-  projectCwd: string
-  startTime: number
 }
 
 export async function getHookEntries(): Promise<HookEntry[]> {
@@ -238,21 +229,6 @@ export async function getEntriesForSession(
     sessionIdField: '$.session_id',
     orderBy: 'DESC',
   })
-}
-
-export interface ChatEntry {
-  id: string
-  data: string
-  cwd: string
-  filepath: string
-  created: number
-}
-
-export interface ChatSession {
-  sessionId: string
-  projectCwd: string
-  startTime: number
-  filepath: string
 }
 
 export async function getChatProjects(): Promise<Project[]> {

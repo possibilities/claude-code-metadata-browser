@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getRelativeTime } from '@/lib/utils'
-import type { Project, Session } from '@/app/actions'
+import type { Project, Session } from '@/lib/types'
 
 interface AppSidebarProps {
   projects: Project[]

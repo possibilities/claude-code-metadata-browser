@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getRelativeTime } from '@/lib/utils'
-import type { Project, ChatSession } from '@/app/actions'
+import type { Project, ChatSession } from '@/lib/types'
 
 interface ChatsAppSidebarProps {
   projects: Project[]

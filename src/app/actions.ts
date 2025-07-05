@@ -5,6 +5,7 @@ import { execSync } from 'child_process'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import { config, validateConfig, validateChatConfig } from '@/lib/config-node'
+import { perfLogger } from '@/lib/perf-logger'
 import type {
   HookEntry,
   Project,
@@ -65,35 +66,58 @@ export async function getHookEntries(): Promise<HookEntry[]> {
 }
 
 async function getProjectsGeneric(databasePath: string): Promise<Project[]> {
-  const db = new Database(databasePath, { readonly: true })
+  const dbType = databasePath.includes('chats') ? 'chats' : 'hooks'
+  const actionName = `getProjectsGeneric.${dbType}`
 
-  try {
-    const stmt = db.prepare('SELECT DISTINCT cwd FROM entries ORDER BY cwd')
-    const results = stmt.all() as { cwd: string }[]
+  return perfLogger.measure(
+    actionName,
+    async () => {
+      perfLogger.start(`${actionName}.openDb`)
+      const db = new Database(databasePath, { readonly: true })
+      perfLogger.end(`${actionName}.openDb`)
 
-    const projectMap = new Map<string, Project>()
+      try {
+        perfLogger.start(`${actionName}.query`)
+        const stmt = db.prepare('SELECT DISTINCT cwd FROM entries ORDER BY cwd')
+        const results = stmt.all() as { cwd: string }[]
+        perfLogger.end(`${actionName}.query`, { cwdCount: results.length })
 
-    for (const { cwd } of results) {
-      const resolvedPath = resolveProjectPath(cwd)
+        perfLogger.start(`${actionName}.transform`)
+        const projectMap = new Map<string, Project>()
 
-      if (!isInWorktreesPath(cwd) || resolvedPath === cwd) {
-        const parts = resolvedPath.split('/')
-        const displayName = parts.slice(-2).join('/')
-        projectMap.set(resolvedPath, { cwd: resolvedPath, displayName })
+        for (const { cwd } of results) {
+          const resolvedPath = resolveProjectPath(cwd)
+
+          if (!isInWorktreesPath(cwd) || resolvedPath === cwd) {
+            const parts = resolvedPath.split('/')
+            const displayName = parts.slice(-2).join('/')
+            projectMap.set(resolvedPath, { cwd: resolvedPath, displayName })
+          }
+        }
+
+        const result = Array.from(projectMap.values()).sort((a, b) =>
+          a.cwd.localeCompare(b.cwd),
+        )
+        perfLogger.end(`${actionName}.transform`, {
+          projectCount: result.length,
+        })
+
+        return result
+      } finally {
+        perfLogger.start(`${actionName}.closeDb`)
+        db.close()
+        perfLogger.end(`${actionName}.closeDb`)
       }
-    }
-
-    return Array.from(projectMap.values()).sort((a, b) =>
-      a.cwd.localeCompare(b.cwd),
-    )
-  } finally {
-    db.close()
-  }
+    },
+    { dbType },
+  )
 }
 
 export async function getProjects(): Promise<Project[]> {
   validateConfig()
-  return getProjectsGeneric(config.databasePath!)
+  return perfLogger.measure('getProjects', async () => {
+    return getProjectsGeneric(config.databasePath!)
+  })
 }
 
 interface SessionQueryConfig {
@@ -106,76 +130,116 @@ async function getSessionsGeneric<T extends Session | ChatSession>(
   projectCwd: string,
   config: SessionQueryConfig,
 ): Promise<T[]> {
-  const db = new Database(config.databasePath, { readonly: true })
+  const dbType = config.databasePath.includes('chats') ? 'chats' : 'hooks'
+  const actionName = `getSessionsGeneric.${dbType}`
 
-  try {
-    const stmt = db.prepare('SELECT DISTINCT cwd FROM entries')
-    const allPaths = stmt.all() as { cwd: string }[]
+  return perfLogger.measure(
+    actionName,
+    async () => {
+      perfLogger.start(`${actionName}.openDb`)
+      const db = new Database(config.databasePath, { readonly: true })
+      perfLogger.end(`${actionName}.openDb`)
 
-    const relevantPaths = allPaths
-      .filter(({ cwd }) => resolveProjectPath(cwd) === projectCwd)
-      .map(({ cwd }) => cwd)
+      try {
+        perfLogger.start(`${actionName}.pathQuery`)
+        const stmt = db.prepare('SELECT DISTINCT cwd FROM entries')
+        const allPaths = stmt.all() as { cwd: string }[]
+        perfLogger.end(`${actionName}.pathQuery`, {
+          pathCount: allPaths.length,
+        })
 
-    if (relevantPaths.length === 0) return []
+        perfLogger.start(`${actionName}.filterPaths`)
+        const relevantPaths = allPaths
+          .filter(({ cwd }) => resolveProjectPath(cwd) === projectCwd)
+          .map(({ cwd }) => cwd)
+        perfLogger.end(`${actionName}.filterPaths`, {
+          relevantPathCount: relevantPaths.length,
+        })
 
-    const placeholders = relevantPaths.map(() => '?').join(', ')
-    const selectFields = config.includeFilepath
-      ? `json_extract(data, '${config.sessionIdField}') as sessionId,
-         filepath,
-         cwd as originalCwd,
-         MIN(created) as startTime`
-      : `json_extract(data, '${config.sessionIdField}') as sessionId,
-         cwd as originalCwd,
-         MIN(created) as startTime`
+        if (relevantPaths.length === 0) return []
 
-    const groupByClause = config.includeFilepath
-      ? 'GROUP BY sessionId, filepath'
-      : 'GROUP BY sessionId'
+        const placeholders = relevantPaths.map(() => '?').join(', ')
+        const selectFields = config.includeFilepath
+          ? `json_extract(data, '${config.sessionIdField}') as sessionId,
+           filepath,
+           cwd as originalCwd,
+           MIN(created) as startTime`
+          : `json_extract(data, '${config.sessionIdField}') as sessionId,
+           cwd as originalCwd,
+           MIN(created) as startTime`
 
-    const sessionStmt = db.prepare(`
-      SELECT DISTINCT
-        ${selectFields}
-      FROM entries
-      WHERE cwd IN (${placeholders})
-        AND json_extract(data, '${config.sessionIdField}') IS NOT NULL
-      ${groupByClause}
-      ORDER BY startTime DESC
-    `)
+        const groupByClause = config.includeFilepath
+          ? 'GROUP BY sessionId, filepath'
+          : 'GROUP BY sessionId'
 
-    const sessions = sessionStmt.all(...relevantPaths) as Array<{
-      sessionId: string
-      originalCwd: string
-      startTime: number
-      filepath?: string
-    }>
+        const sql = `
+        SELECT DISTINCT
+          ${selectFields}
+        FROM entries
+        WHERE cwd IN (${placeholders})
+          AND json_extract(data, '${config.sessionIdField}') IS NOT NULL
+        ${groupByClause}
+        ORDER BY startTime DESC
+      `
 
-    return sessions.map(session => {
-      const baseSession = {
-        sessionId: session.sessionId,
-        projectCwd: projectCwd,
-        startTime: session.startTime,
+        perfLogger.start(`${actionName}.sessionQuery`)
+        const sessionStmt = db.prepare(sql)
+        const sessions = sessionStmt.all(...relevantPaths) as Array<{
+          sessionId: string
+          originalCwd: string
+          startTime: number
+          filepath?: string
+        }>
+        perfLogger.end(`${actionName}.sessionQuery`, {
+          sessionCount: sessions.length,
+          projectCwd,
+        })
+
+        perfLogger.start(`${actionName}.transform`)
+        const result = sessions.map(session => {
+          const baseSession = {
+            sessionId: session.sessionId,
+            projectCwd: projectCwd,
+            startTime: session.startTime,
+          }
+
+          if (config.includeFilepath) {
+            return { ...baseSession, filepath: session.filepath } as T
+          }
+
+          return baseSession as T
+        })
+        perfLogger.end(`${actionName}.transform`)
+
+        return result
+      } finally {
+        perfLogger.start(`${actionName}.closeDb`)
+        db.close()
+        perfLogger.end(`${actionName}.closeDb`)
       }
-
-      if (config.includeFilepath) {
-        return { ...baseSession, filepath: session.filepath } as T
-      }
-
-      return baseSession as T
-    })
-  } finally {
-    db.close()
-  }
+    },
+    {
+      projectCwd,
+      dbType,
+    },
+  )
 }
 
 export async function getSessionsForProject(
   projectCwd: string,
 ): Promise<Session[]> {
   validateConfig()
-  return getSessionsGeneric<Session>(projectCwd, {
-    databasePath: config.databasePath!,
-    sessionIdField: '$.session_id',
-    includeFilepath: false,
-  })
+  return perfLogger.measure(
+    'getSessionsForProject',
+    async () => {
+      return getSessionsGeneric<Session>(projectCwd, {
+        databasePath: config.databasePath!,
+        sessionIdField: '$.session_id',
+        includeFilepath: false,
+      })
+    },
+    { projectCwd },
+  )
 }
 
 interface EntryQueryConfig {
@@ -189,34 +253,71 @@ async function getEntriesGeneric<T extends HookEntry | ChatEntry>(
   sessionId: string,
   config: EntryQueryConfig,
 ): Promise<T[]> {
-  const db = new Database(config.databasePath, { readonly: true })
+  const dbType = config.databasePath.includes('chats') ? 'chats' : 'hooks'
+  const actionName = `getEntriesGeneric.${dbType}`
 
-  try {
-    const pathStmt = db.prepare('SELECT DISTINCT cwd FROM entries')
-    const allPaths = pathStmt.all() as { cwd: string }[]
+  return perfLogger.measure(
+    actionName,
+    async () => {
+      perfLogger.start(`${actionName}.openDb`)
+      const db = new Database(config.databasePath, { readonly: true })
+      perfLogger.end(`${actionName}.openDb`)
 
-    const relevantPaths = allPaths
-      .filter(({ cwd }) => resolveProjectPath(cwd) === projectCwd)
-      .map(({ cwd }) => cwd)
+      try {
+        perfLogger.start(`${actionName}.pathQuery`)
+        const pathStmt = db.prepare('SELECT DISTINCT cwd FROM entries')
+        const allPaths = pathStmt.all() as { cwd: string }[]
+        perfLogger.end(`${actionName}.pathQuery`, {
+          pathCount: allPaths.length,
+        })
 
-    if (relevantPaths.length === 0) return []
+        perfLogger.start(`${actionName}.filterPaths`)
+        const relevantPaths = allPaths
+          .filter(({ cwd }) => resolveProjectPath(cwd) === projectCwd)
+          .map(({ cwd }) => cwd)
+        perfLogger.end(`${actionName}.filterPaths`, {
+          relevantPathCount: relevantPaths.length,
+        })
 
-    const placeholders = relevantPaths.map(() => '?').join(', ')
-    const stmt = db.prepare(`
-      SELECT * FROM entries
-      WHERE cwd IN (${placeholders})
-        AND json_extract(data, '${config.sessionIdField}') = ?
-      ORDER BY created ${config.orderBy}
-    `)
+        if (relevantPaths.length === 0) return []
 
-    const entries = stmt.all(...relevantPaths, sessionId) as T[]
-    return entries.map(entry => ({
-      ...entry,
-      cwd: resolveProjectPath(entry.cwd),
-    }))
-  } finally {
-    db.close()
-  }
+        const placeholders = relevantPaths.map(() => '?').join(', ')
+        const sql = `
+        SELECT * FROM entries
+        WHERE cwd IN (${placeholders})
+          AND json_extract(data, '${config.sessionIdField}') = ?
+        ORDER BY created ${config.orderBy}
+      `
+
+        perfLogger.start(`${actionName}.mainQuery`)
+        const stmt = db.prepare(sql)
+        const entries = stmt.all(...relevantPaths, sessionId) as T[]
+        perfLogger.end(`${actionName}.mainQuery`, {
+          entryCount: entries.length,
+          sessionId,
+          projectCwd,
+        })
+
+        perfLogger.start(`${actionName}.transform`)
+        const result = entries.map(entry => ({
+          ...entry,
+          cwd: resolveProjectPath(entry.cwd),
+        }))
+        perfLogger.end(`${actionName}.transform`)
+
+        return result
+      } finally {
+        perfLogger.start(`${actionName}.closeDb`)
+        db.close()
+        perfLogger.end(`${actionName}.closeDb`)
+      }
+    },
+    {
+      projectCwd,
+      sessionId,
+      dbType,
+    },
+  )
 }
 
 export async function getEntriesForSession(
@@ -224,27 +325,41 @@ export async function getEntriesForSession(
   sessionId: string,
 ): Promise<HookEntry[]> {
   validateConfig()
-  return getEntriesGeneric<HookEntry>(projectCwd, sessionId, {
-    databasePath: config.databasePath!,
-    sessionIdField: '$.session_id',
-    orderBy: 'DESC',
-  })
+  return perfLogger.measure(
+    'getEntriesForSession',
+    async () => {
+      return getEntriesGeneric<HookEntry>(projectCwd, sessionId, {
+        databasePath: config.databasePath!,
+        sessionIdField: '$.session_id',
+        orderBy: 'DESC',
+      })
+    },
+    { projectCwd, sessionId },
+  )
 }
 
 export async function getChatProjects(): Promise<Project[]> {
   validateChatConfig()
-  return getProjectsGeneric(config.chatDatabasePath!)
+  return perfLogger.measure('getChatProjects', async () => {
+    return getProjectsGeneric(config.chatDatabasePath!)
+  })
 }
 
 export async function getChatSessionsForProject(
   projectCwd: string,
 ): Promise<ChatSession[]> {
   validateChatConfig()
-  return getSessionsGeneric<ChatSession>(projectCwd, {
-    databasePath: config.chatDatabasePath!,
-    sessionIdField: '$.sessionId',
-    includeFilepath: true,
-  })
+  return perfLogger.measure(
+    'getChatSessionsForProject',
+    async () => {
+      return getSessionsGeneric<ChatSession>(projectCwd, {
+        databasePath: config.chatDatabasePath!,
+        sessionIdField: '$.sessionId',
+        includeFilepath: true,
+      })
+    },
+    { projectCwd },
+  )
 }
 
 export async function getChatEntriesForSession(
@@ -252,11 +367,17 @@ export async function getChatEntriesForSession(
   sessionId: string,
 ): Promise<ChatEntry[]> {
   validateChatConfig()
-  return getEntriesGeneric<ChatEntry>(projectCwd, sessionId, {
-    databasePath: config.chatDatabasePath!,
-    sessionIdField: '$.sessionId',
-    orderBy: 'ASC',
-  })
+  return perfLogger.measure(
+    'getChatEntriesForSession',
+    async () => {
+      return getEntriesGeneric<ChatEntry>(projectCwd, sessionId, {
+        databasePath: config.chatDatabasePath!,
+        sessionIdField: '$.sessionId',
+        orderBy: 'ASC',
+      })
+    },
+    { projectCwd, sessionId },
+  )
 }
 
 export interface ProjectInfo {
@@ -267,18 +388,24 @@ export interface ProjectInfo {
 export async function getProjectInfo(
   projectPath: string,
 ): Promise<ProjectInfo> {
-  try {
-    const packageJsonPath = join(projectPath, 'package.json')
-    if (!existsSync(packageJsonPath)) {
-      return {}
-    }
+  return perfLogger.measure(
+    'getProjectInfo',
+    async () => {
+      try {
+        const packageJsonPath = join(projectPath, 'package.json')
+        if (!existsSync(packageJsonPath)) {
+          return {}
+        }
 
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
-    return {
-      name: packageJson.name,
-      description: packageJson.description,
-    }
-  } catch {
-    return {}
-  }
+        const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+        return {
+          name: packageJson.name,
+          description: packageJson.description,
+        }
+      } catch {
+        return {}
+      }
+    },
+    { projectPath },
+  )
 }

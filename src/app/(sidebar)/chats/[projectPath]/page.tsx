@@ -1,5 +1,5 @@
-import { getProjects, getSessionsForProject } from '../../actions'
-import { AppSidebar } from '@/components/app-sidebar'
+import { getChatProjects, getChatSessionsForProject } from '../../../actions'
+import { ChatsAppSidebar } from '@/components/chats-app-sidebar'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 
@@ -9,9 +9,9 @@ interface ProjectPageProps {
   }>
 }
 
-export default async function ProjectPage({ params }: ProjectPageProps) {
+export default async function ChatsProjectPage({ params }: ProjectPageProps) {
   const { projectPath } = await params
-  const projects = await getProjects()
+  const projects = await getChatProjects()
 
   const project = projects.find(p => {
     const parts = p.cwd.split('/')
@@ -23,16 +23,16 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     return <div>Project not found</div>
   }
 
-  const sessions = await getSessionsForProject(project.cwd)
+  const sessions = await getChatSessionsForProject(project.cwd)
 
   return (
     <>
-      <AppSidebar projects={projects} sessions={sessions} />
+      <ChatsAppSidebar projects={projects} sessions={sessions} />
       <SidebarInset>
         <header className='flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-2'>
           <div className='flex items-center gap-2'>
             <SidebarTrigger />
-            <h1 className='text-lg font-semibold'>Hooks</h1>
+            <h1 className='text-lg font-semibold'>Chats</h1>
           </div>
           <ThemeToggle />
         </header>
@@ -40,7 +40,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           <div className='text-center text-muted-foreground'>
             <p className='text-lg mb-2'>Select a session</p>
             <p className='text-sm'>
-              Choose a session from the sidebar to view its entries
+              Choose a chat session from the sidebar to view the conversation
             </p>
           </div>
         </main>

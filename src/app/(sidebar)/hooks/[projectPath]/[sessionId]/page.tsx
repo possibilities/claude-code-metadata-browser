@@ -1,10 +1,10 @@
 import {
-  getChatProjects,
-  getChatSessionsForProject,
-  getChatEntriesForSession,
-} from '../../../actions'
-import { ChatsAppSidebar } from '@/components/chats-app-sidebar'
-import { ChatsList } from '@/components/chats-list'
+  getProjects,
+  getSessionsForProject,
+  getEntriesForSession,
+} from '../../../../actions'
+import { AppSidebar } from '@/components/app-sidebar'
+import { HooksList } from '@/components/hooks-list'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Badge } from '@/components/ui/badge'
@@ -24,9 +24,9 @@ interface SessionPageProps {
   }>
 }
 
-export default async function ChatsSessionPage({ params }: SessionPageProps) {
+export default async function SessionPage({ params }: SessionPageProps) {
   const { projectPath, sessionId } = await params
-  const projects = await getChatProjects()
+  const projects = await getProjects()
 
   const project = projects.find(p => {
     const parts = p.cwd.split('/')
@@ -38,14 +38,14 @@ export default async function ChatsSessionPage({ params }: SessionPageProps) {
     return <div>Project not found</div>
   }
 
-  const sessions = await getChatSessionsForProject(project.cwd)
-  const entries = await getChatEntriesForSession(project.cwd, sessionId)
+  const sessions = await getSessionsForProject(project.cwd)
+  const entries = await getEntriesForSession(project.cwd, sessionId)
   const isWorktree = project.cwd.includes('worktree')
   const projectName = project.cwd.split('/').slice(-2).join('/')
 
   return (
     <>
-      <ChatsAppSidebar projects={projects} sessions={sessions} />
+      <AppSidebar projects={projects} sessions={sessions} />
       <SidebarInset>
         <header className='flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 py-2'>
           <div className='flex items-center gap-4'>
@@ -53,11 +53,11 @@ export default async function ChatsSessionPage({ params }: SessionPageProps) {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href='/chats'>Chats</BreadcrumbLink>
+                  <BreadcrumbLink href='/hooks'>Hooks</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href={`/chats/${projectPath}`}>
+                  <BreadcrumbLink href={`/hooks/${projectPath}`}>
                     {projectName}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
@@ -86,11 +86,11 @@ export default async function ChatsSessionPage({ params }: SessionPageProps) {
         >
           {entries.length === 0 ? (
             <div className='text-center text-muted-foreground'>
-              No messages found for this session
+              No entries found for this session
             </div>
           ) : (
             <div className='max-w-[1400px] mx-auto'>
-              <ChatsList entries={entries} />
+              <HooksList entries={entries} />
             </div>
           )}
         </main>

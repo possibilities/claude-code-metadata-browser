@@ -1,4 +1,4 @@
-import { getProjects } from '../actions'
+import { getProjects } from '../../actions'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'

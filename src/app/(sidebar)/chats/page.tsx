@@ -1,4 +1,4 @@
-import { getChatProjects } from '../actions'
+import { getChatProjects } from '../../actions'
 import { ChatsAppSidebar } from '@/components/chats-app-sidebar'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'

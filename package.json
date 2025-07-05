@@ -1,7 +1,7 @@
 {
-  "name": "hooks-log",
+  "name": "claude-code-metadata-browser",
   "version": "0.1.0",
-  "description": "Hooks Log UI",
+  "description": "Claude Code Metadata Browser",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",

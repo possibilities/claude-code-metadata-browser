@@ -4,8 +4,8 @@ import './globals.css'
 import './debug.css'
 
 export const metadata: Metadata = {
-  title: 'Hooks Log',
-  description: 'Claude Hooks Log Viewer',
+  title: 'Claude Code Metadata Browser',
+  description: 'Claude Code Metadata Browser',
 }
 
 export default async function RootLayout({

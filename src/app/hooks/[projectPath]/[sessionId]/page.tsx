@@ -77,16 +77,22 @@ export default async function SessionPage({ params }: SessionPageProps) {
           </div>
           <ThemeToggle />
         </header>
-        <main className='p-4'>
-          <div className='max-w-[1400px] mx-auto'>
-            {entries.length === 0 ? (
-              <div className='text-center py-8 text-muted-foreground'>
-                No entries found for this session
-              </div>
-            ) : (
+        <main
+          className={
+            entries.length === 0
+              ? 'flex items-center justify-center min-h-[calc(100vh-57px)]'
+              : 'p-4'
+          }
+        >
+          {entries.length === 0 ? (
+            <div className='text-center text-muted-foreground'>
+              No entries found for this session
+            </div>
+          ) : (
+            <div className='max-w-[1400px] mx-auto'>
               <HooksList entries={entries} />
-            )}
-          </div>
+            </div>
+          )}
         </main>
       </SidebarInset>
     </>

@@ -80,6 +80,8 @@ export default async function ChatsSessionPage({ params }: SessionPageProps) {
           <div className='max-w-[1400px] mx-auto'>
             <SessionHeader
               projectName={projectName}
+              projectPath={projectPath}
+              sessionId={sessionId}
               projectInfo={projectInfo}
               entryCount={entries.length}
               sessionType='chats'

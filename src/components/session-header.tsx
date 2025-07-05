@@ -1,10 +1,19 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { FolderGit2, GitBranch, MessageSquare, Webhook } from 'lucide-react'
+import {
+  FolderGit2,
+  GitBranch,
+  MessageSquare,
+  Webhook,
+  ArrowRight,
+} from 'lucide-react'
+import Link from 'next/link'
 import type { ProjectInfo } from '@/app/actions'
 
 interface SessionHeaderProps {
   projectName: string
+  projectPath: string
+  sessionId: string
   projectInfo: ProjectInfo
   entryCount: number
   sessionType: 'chats' | 'hooks'
@@ -13,6 +22,8 @@ interface SessionHeaderProps {
 
 export function SessionHeader({
   projectName,
+  projectPath,
+  sessionId,
   projectInfo,
   entryCount,
   sessionType,
@@ -21,6 +32,8 @@ export function SessionHeader({
   const displayName = projectInfo.name || projectName
   const ProjectIcon = isWorktree ? GitBranch : FolderGit2
   const SessionIcon = sessionType === 'chats' ? MessageSquare : Webhook
+  const otherType = sessionType === 'chats' ? 'hooks' : 'chats'
+  const otherTypeSingular = sessionType === 'chats' ? 'hook' : 'chat'
 
   return (
     <Card className='p-4 mb-4'>
@@ -32,12 +45,21 @@ export function SessionHeader({
             {isWorktree ? 'Worktree' : 'Project'}
           </Badge>
         </div>
-        <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-          <SessionIcon className='h-4 w-4' />
-          <span>
-            {entryCount} {sessionType === 'chats' ? 'message' : 'event'}
-            {entryCount !== 1 ? 's' : ''}
-          </span>
+        <div className='flex items-center gap-4'>
+          <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+            <SessionIcon className='h-4 w-4' />
+            <span>
+              {entryCount} {sessionType === 'chats' ? 'message' : 'event'}
+              {entryCount !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <Link
+            href={`/${otherType}/${projectPath}/${sessionId}`}
+            className='flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors'
+          >
+            <span>View {otherTypeSingular}</span>
+            <ArrowRight className='h-3 w-3' />
+          </Link>
         </div>
       </div>
     </Card>

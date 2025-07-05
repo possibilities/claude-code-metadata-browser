@@ -73,9 +73,8 @@ export async function getHookEntries(): Promise<HookEntry[]> {
   }
 }
 
-export async function getProjects(): Promise<Project[]> {
-  validateConfig()
-  const db = new Database(config.databasePath!, { readonly: true })
+async function getProjectsGeneric(databasePath: string): Promise<Project[]> {
+  const db = new Database(databasePath, { readonly: true })
 
   try {
     const stmt = db.prepare('SELECT DISTINCT cwd FROM entries ORDER BY cwd')
@@ -101,11 +100,22 @@ export async function getProjects(): Promise<Project[]> {
   }
 }
 
-export async function getSessionsForProject(
-  projectCwd: string,
-): Promise<Session[]> {
+export async function getProjects(): Promise<Project[]> {
   validateConfig()
-  const db = new Database(config.databasePath!, { readonly: true })
+  return getProjectsGeneric(config.databasePath!)
+}
+
+interface SessionQueryConfig {
+  databasePath: string
+  sessionIdField: string
+  includeFilepath?: boolean
+}
+
+async function getSessionsGeneric<T extends Session | ChatSession>(
+  projectCwd: string,
+  config: SessionQueryConfig,
+): Promise<T[]> {
+  const db = new Database(config.databasePath, { readonly: true })
 
   try {
     const stmt = db.prepare('SELECT DISTINCT cwd FROM entries')
@@ -118,15 +128,26 @@ export async function getSessionsForProject(
     if (relevantPaths.length === 0) return []
 
     const placeholders = relevantPaths.map(() => '?').join(', ')
+    const selectFields = config.includeFilepath
+      ? `json_extract(data, '${config.sessionIdField}') as sessionId,
+         filepath,
+         cwd as originalCwd,
+         MIN(created) as startTime`
+      : `json_extract(data, '${config.sessionIdField}') as sessionId,
+         cwd as originalCwd,
+         MIN(created) as startTime`
+
+    const groupByClause = config.includeFilepath
+      ? 'GROUP BY sessionId, filepath'
+      : 'GROUP BY sessionId'
+
     const sessionStmt = db.prepare(`
       SELECT DISTINCT
-        json_extract(data, '$.session_id') as sessionId,
-        cwd as originalCwd,
-        MIN(created) as startTime
+        ${selectFields}
       FROM entries
       WHERE cwd IN (${placeholders})
-        AND json_extract(data, '$.session_id') IS NOT NULL
-      GROUP BY sessionId
+        AND json_extract(data, '${config.sessionIdField}') IS NOT NULL
+      ${groupByClause}
       ORDER BY startTime DESC
     `)
 
@@ -134,24 +155,50 @@ export async function getSessionsForProject(
       sessionId: string
       originalCwd: string
       startTime: number
+      filepath?: string
     }>
 
-    return sessions.map(session => ({
-      sessionId: session.sessionId,
-      projectCwd: projectCwd,
-      startTime: session.startTime,
-    }))
+    return sessions.map(session => {
+      const baseSession = {
+        sessionId: session.sessionId,
+        projectCwd: projectCwd,
+        startTime: session.startTime,
+      }
+
+      if (config.includeFilepath) {
+        return { ...baseSession, filepath: session.filepath } as T
+      }
+
+      return baseSession as T
+    })
   } finally {
     db.close()
   }
 }
 
-export async function getEntriesForSession(
+export async function getSessionsForProject(
+  projectCwd: string,
+): Promise<Session[]> {
+  validateConfig()
+  return getSessionsGeneric<Session>(projectCwd, {
+    databasePath: config.databasePath!,
+    sessionIdField: '$.session_id',
+    includeFilepath: false,
+  })
+}
+
+interface EntryQueryConfig {
+  databasePath: string
+  sessionIdField: string
+  orderBy: 'ASC' | 'DESC'
+}
+
+async function getEntriesGeneric<T extends HookEntry | ChatEntry>(
   projectCwd: string,
   sessionId: string,
-): Promise<HookEntry[]> {
-  validateConfig()
-  const db = new Database(config.databasePath!, { readonly: true })
+  config: EntryQueryConfig,
+): Promise<T[]> {
+  const db = new Database(config.databasePath, { readonly: true })
 
   try {
     const pathStmt = db.prepare('SELECT DISTINCT cwd FROM entries')
@@ -167,11 +214,11 @@ export async function getEntriesForSession(
     const stmt = db.prepare(`
       SELECT * FROM entries
       WHERE cwd IN (${placeholders})
-        AND json_extract(data, '$.session_id') = ?
-      ORDER BY created DESC
+        AND json_extract(data, '${config.sessionIdField}') = ?
+      ORDER BY created ${config.orderBy}
     `)
 
-    const entries = stmt.all(...relevantPaths, sessionId) as HookEntry[]
+    const entries = stmt.all(...relevantPaths, sessionId) as T[]
     return entries.map(entry => ({
       ...entry,
       cwd: resolveProjectPath(entry.cwd),
@@ -179,6 +226,18 @@ export async function getEntriesForSession(
   } finally {
     db.close()
   }
+}
+
+export async function getEntriesForSession(
+  projectCwd: string,
+  sessionId: string,
+): Promise<HookEntry[]> {
+  validateConfig()
+  return getEntriesGeneric<HookEntry>(projectCwd, sessionId, {
+    databasePath: config.databasePath!,
+    sessionIdField: '$.session_id',
+    orderBy: 'DESC',
+  })
 }
 
 export interface ChatEntry {
@@ -198,78 +257,18 @@ export interface ChatSession {
 
 export async function getChatProjects(): Promise<Project[]> {
   validateChatConfig()
-  const db = new Database(config.chatDatabasePath!, { readonly: true })
-
-  try {
-    const stmt = db.prepare('SELECT DISTINCT cwd FROM entries ORDER BY cwd')
-    const results = stmt.all() as { cwd: string }[]
-
-    const projectMap = new Map<string, Project>()
-
-    for (const { cwd } of results) {
-      const resolvedPath = resolveProjectPath(cwd)
-
-      if (!isInWorktreesPath(cwd) || resolvedPath === cwd) {
-        const parts = resolvedPath.split('/')
-        const displayName = parts.slice(-2).join('/')
-        projectMap.set(resolvedPath, { cwd: resolvedPath, displayName })
-      }
-    }
-
-    return Array.from(projectMap.values()).sort((a, b) =>
-      a.cwd.localeCompare(b.cwd),
-    )
-  } finally {
-    db.close()
-  }
+  return getProjectsGeneric(config.chatDatabasePath!)
 }
 
 export async function getChatSessionsForProject(
   projectCwd: string,
 ): Promise<ChatSession[]> {
   validateChatConfig()
-  const db = new Database(config.chatDatabasePath!, { readonly: true })
-
-  try {
-    const stmt = db.prepare('SELECT DISTINCT cwd FROM entries')
-    const allPaths = stmt.all() as { cwd: string }[]
-
-    const relevantPaths = allPaths
-      .filter(({ cwd }) => resolveProjectPath(cwd) === projectCwd)
-      .map(({ cwd }) => cwd)
-
-    if (relevantPaths.length === 0) return []
-
-    const placeholders = relevantPaths.map(() => '?').join(', ')
-    const sessionStmt = db.prepare(`
-      SELECT DISTINCT
-        json_extract(data, '$.sessionId') as sessionId,
-        filepath,
-        cwd as originalCwd,
-        MIN(created) as startTime
-      FROM entries
-      WHERE cwd IN (${placeholders})
-        AND json_extract(data, '$.sessionId') IS NOT NULL
-      GROUP BY sessionId, filepath
-      ORDER BY startTime DESC
-    `)
-
-    const sessions = sessionStmt.all(...relevantPaths) as Array<{
-      sessionId: string
-      filepath: string
-      originalCwd: string
-      startTime: number
-    }>
-
-    return sessions.map(session => ({
-      sessionId: session.sessionId,
-      projectCwd: projectCwd,
-      startTime: session.startTime,
-      filepath: session.filepath,
-    }))
-  } finally {
-    db.close()
-  }
+  return getSessionsGeneric<ChatSession>(projectCwd, {
+    databasePath: config.chatDatabasePath!,
+    sessionIdField: '$.sessionId',
+    includeFilepath: true,
+  })
 }
 
 export async function getChatEntriesForSession(
@@ -277,32 +276,9 @@ export async function getChatEntriesForSession(
   sessionId: string,
 ): Promise<ChatEntry[]> {
   validateChatConfig()
-  const db = new Database(config.chatDatabasePath!, { readonly: true })
-
-  try {
-    const pathStmt = db.prepare('SELECT DISTINCT cwd FROM entries')
-    const allPaths = pathStmt.all() as { cwd: string }[]
-
-    const relevantPaths = allPaths
-      .filter(({ cwd }) => resolveProjectPath(cwd) === projectCwd)
-      .map(({ cwd }) => cwd)
-
-    if (relevantPaths.length === 0) return []
-
-    const placeholders = relevantPaths.map(() => '?').join(', ')
-    const stmt = db.prepare(`
-      SELECT * FROM entries
-      WHERE cwd IN (${placeholders})
-        AND json_extract(data, '$.sessionId') = ?
-      ORDER BY created ASC
-    `)
-
-    const entries = stmt.all(...relevantPaths, sessionId) as ChatEntry[]
-    return entries.map(entry => ({
-      ...entry,
-      cwd: resolveProjectPath(entry.cwd),
-    }))
-  } finally {
-    db.close()
-  }
+  return getEntriesGeneric<ChatEntry>(projectCwd, sessionId, {
+    databasePath: config.chatDatabasePath!,
+    sessionIdField: '$.sessionId',
+    orderBy: 'ASC',
+  })
 }

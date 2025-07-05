@@ -1,7 +1,5 @@
 import type { Metadata } from 'next'
-import { cookies } from 'next/headers'
 import { ThemeProvider } from '@/lib/theme-provider'
-import { SidebarProvider } from '@/components/ui/sidebar'
 import './globals.css'
 import './debug.css'
 
@@ -15,9 +13,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const cookieStore = await cookies()
-  const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true'
-
   return (
     <html lang='en' suppressHydrationWarning>
       <head>
@@ -35,11 +30,7 @@ export default async function RootLayout({
         />
       </head>
       <body>
-        <ThemeProvider>
-          <SidebarProvider defaultOpen={defaultOpen}>
-            {children}
-          </SidebarProvider>
-        </ThemeProvider>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   )

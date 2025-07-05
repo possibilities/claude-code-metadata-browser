@@ -23,18 +23,15 @@ export function SessionHeader({
   const SessionIcon = sessionType === 'chats' ? MessageSquare : Webhook
 
   return (
-    <Card className='p-6 mb-4'>
-      <div className='space-y-3'>
+    <Card className='p-4 mb-4'>
+      <div className='flex items-center justify-between'>
         <div className='flex items-center gap-3'>
-          <ProjectIcon className='h-5 w-5 text-muted-foreground' />
-          <h2 className='text-2xl font-semibold'>{displayName}</h2>
+          <ProjectIcon className='h-4 w-4 text-muted-foreground flex-shrink-0' />
+          <h2 className='text-lg font-semibold'>{displayName}</h2>
           <Badge variant='secondary' className='text-xs'>
             {isWorktree ? 'Worktree' : 'Project'}
           </Badge>
         </div>
-        {projectInfo.description && (
-          <p className='text-muted-foreground'>{projectInfo.description}</p>
-        )}
         <div className='flex items-center gap-2 text-sm text-muted-foreground'>
           <SessionIcon className='h-4 w-4' />
           <span>

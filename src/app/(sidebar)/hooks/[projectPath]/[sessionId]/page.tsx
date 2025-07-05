@@ -2,12 +2,13 @@ import {
   getProjects,
   getSessionsForProject,
   getEntriesForSession,
+  getProjectInfo,
 } from '../../../../actions'
 import { AppSidebar } from '@/components/app-sidebar'
 import { HooksList } from '@/components/hooks-list'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Badge } from '@/components/ui/badge'
+import { SessionHeader } from '@/components/session-header'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -40,6 +41,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
 
   const sessions = await getSessionsForProject(project.cwd)
   const entries = await getEntriesForSession(project.cwd, sessionId)
+  const projectInfo = await getProjectInfo(project.cwd)
   const isWorktree = project.cwd.includes('worktree')
   const projectName = project.cwd.split('/').slice(-2).join('/')
 
@@ -63,13 +65,10 @@ export default async function SessionPage({ params }: SessionPageProps) {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage className='flex items-center gap-2'>
+                  <BreadcrumbPage>
                     <span className='font-mono text-xs'>
                       {sessionId.slice(0, 8)}...
                     </span>
-                    <Badge variant='secondary' className='text-xs'>
-                      {isWorktree ? 'Worktree' : 'Project'}
-                    </Badge>
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
@@ -77,22 +76,23 @@ export default async function SessionPage({ params }: SessionPageProps) {
           </div>
           <ThemeToggle />
         </header>
-        <main
-          className={
-            entries.length === 0
-              ? 'flex items-center justify-center min-h-[calc(100vh-57px)]'
-              : 'p-4'
-          }
-        >
-          {entries.length === 0 ? (
-            <div className='text-center text-muted-foreground'>
-              No entries found for this session
-            </div>
-          ) : (
-            <div className='max-w-[1400px] mx-auto'>
+        <main className='p-4'>
+          <div className='max-w-[1400px] mx-auto'>
+            <SessionHeader
+              projectName={projectName}
+              projectInfo={projectInfo}
+              entryCount={entries.length}
+              sessionType='hooks'
+              isWorktree={isWorktree}
+            />
+            {entries.length === 0 ? (
+              <div className='text-center text-muted-foreground py-8'>
+                No entries found for this session
+              </div>
+            ) : (
               <HooksList entries={entries} />
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </SidebarInset>
     </>

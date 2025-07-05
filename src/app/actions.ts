@@ -2,6 +2,8 @@
 
 import Database from 'better-sqlite3'
 import { execSync } from 'child_process'
+import { readFileSync, existsSync } from 'fs'
+import { join } from 'path'
 import { config, validateConfig, validateChatConfig } from '@/lib/config-node'
 import type {
   HookEntry,
@@ -255,4 +257,28 @@ export async function getChatEntriesForSession(
     sessionIdField: '$.sessionId',
     orderBy: 'ASC',
   })
+}
+
+export interface ProjectInfo {
+  name?: string
+  description?: string
+}
+
+export async function getProjectInfo(
+  projectPath: string,
+): Promise<ProjectInfo> {
+  try {
+    const packageJsonPath = join(projectPath, 'package.json')
+    if (!existsSync(packageJsonPath)) {
+      return {}
+    }
+
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+    return {
+      name: packageJson.name,
+      description: packageJson.description,
+    }
+  } catch {
+    return {}
+  }
 }

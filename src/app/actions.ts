@@ -1,7 +1,5 @@
 'use server'
 
-export const runtime = 'nodejs'
-
 import Database from 'better-sqlite3'
 import { execSync } from 'child_process'
 import { config, validateConfig, validateChatConfig } from '@/lib/config-node'

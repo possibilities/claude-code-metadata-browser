@@ -1,7 +1,3 @@
-'use server'
-
-export const runtime = 'nodejs'
-
 import { resolve } from 'path'
 
 function expandTilde(filepath: string | undefined): string | undefined {

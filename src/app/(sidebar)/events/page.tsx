@@ -2,6 +2,11 @@ import { getProjects } from '../../actions'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Events | Claude Code Metadata Browser',
+}
 
 export default async function Home() {
   const projects = await getProjects()

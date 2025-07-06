@@ -17,12 +17,34 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import type { Metadata } from 'next'
 
 interface SessionPageProps {
   params: Promise<{
     projectPath: string
     sessionId: string
   }>
+}
+
+export async function generateMetadata({
+  params,
+}: SessionPageProps): Promise<Metadata> {
+  const { projectPath, sessionId } = await params
+  const projects = await getChatProjects()
+
+  const project = projects.find(p => {
+    const parts = p.cwd.split('/')
+    const path = parts.slice(-2).join('-')
+    return path === projectPath
+  })
+
+  const projectName = project
+    ? project.cwd.split('/').slice(-2).join('/')
+    : projectPath
+
+  return {
+    title: `Chats | ${projectName} | ${sessionId.split('-')[0]} | Claude Code Metadata Browser`,
+  }
 }
 
 export default async function ChatsSessionPage({ params }: SessionPageProps) {

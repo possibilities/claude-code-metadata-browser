@@ -2,6 +2,11 @@ import { getChatProjects } from '../../actions'
 import { ChatsAppSidebar } from '@/components/chats-app-sidebar'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Chats | Claude Code Metadata Browser',
+}
 
 export default async function ChatsHome() {
   const projects = await getChatProjects()

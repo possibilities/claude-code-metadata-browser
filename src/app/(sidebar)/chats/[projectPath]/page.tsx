@@ -2,11 +2,33 @@ import { getChatProjects, getChatSessionsForProject } from '../../../actions'
 import { ChatsAppSidebar } from '@/components/chats-app-sidebar'
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
+import type { Metadata } from 'next'
 
 interface ProjectPageProps {
   params: Promise<{
     projectPath: string
   }>
+}
+
+export async function generateMetadata({
+  params,
+}: ProjectPageProps): Promise<Metadata> {
+  const { projectPath } = await params
+  const projects = await getChatProjects()
+
+  const project = projects.find(p => {
+    const parts = p.cwd.split('/')
+    const path = parts.slice(-2).join('-')
+    return path === projectPath
+  })
+
+  const projectName = project
+    ? project.cwd.split('/').slice(-2).join('/')
+    : projectPath
+
+  return {
+    title: `Chats | ${projectName} | Claude Code Metadata Browser`,
+  }
 }
 
 export default async function ChatsProjectPage({ params }: ProjectPageProps) {

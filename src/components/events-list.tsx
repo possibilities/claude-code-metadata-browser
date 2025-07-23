@@ -20,7 +20,7 @@ export function EventsList({ entries }: EventsListProps) {
           parsedData = entry.data
         }
 
-        const eventName = parsedData?.event_name || 'unknown'
+        const eventName = parsedData?.hook_event_name || 'unknown'
         const toolName = parsedData?.tool_name || 'unknown'
         const showToolName =
           eventName === 'PreToolUse' || eventName === 'PostToolUse'
